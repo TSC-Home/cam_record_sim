@@ -66,9 +66,10 @@ impl VideoRecorder {
         let output_path = output_dir.join(&filename);
 
         // Erstelle GStreamer Pipeline
-        // appsrc ! videoconvert ! x264enc ! mp4mux ! filesink
+        // appsrc ! videoconvert ! openh264enc ! mp4mux ! filesink
+        // openh264enc ist auf den meisten Systemen verfügbar
         let pipeline_str = format!(
-            "appsrc name=src ! videoconvert ! x264enc speed-preset=fast tune=zerolatency ! mp4mux ! filesink location={}",
+            "appsrc name=src ! videoconvert ! openh264enc ! mp4mux ! filesink location={}",
             output_path.to_str().unwrap()
         );
 

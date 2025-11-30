@@ -29,12 +29,18 @@ case $DISTRO in
             gstreamer1-plugins-base-devel \
             gstreamer1-plugins-good \
             gstreamer1-plugins-bad-free \
+            gstreamer1-plugin-openh264 \
             gtk4-devel \
             graphene-devel \
             glib2-devel \
             cairo-devel \
             pango-devel \
             gdk-pixbuf2-devel
+
+        # Optional: Install x264 encoder for better quality (requires RPM Fusion)
+        echo ""
+        echo "Optional: For better video quality, install gstreamer1-plugins-ugly from RPM Fusion"
+        echo "  sudo dnf install gstreamer1-plugins-ugly"
         ;;
 
     debian)
@@ -66,8 +72,11 @@ case $DISTRO in
         sudo pacman -Sy --noconfirm \
             rust \
             cargo \
-            opencv \
-            clang \
+            gstreamer \
+            gst-plugins-base \
+            gst-plugins-good \
+            gst-plugins-bad \
+            gst-plugin-gtk \
             gtk4 \
             graphene \
             glib2 \
@@ -81,8 +90,10 @@ case $DISTRO in
         sudo zypper install -y \
             rust \
             cargo \
-            opencv-devel \
-            clang \
+            gstreamer-devel \
+            gstreamer-plugins-base-devel \
+            gstreamer-plugins-good \
+            gstreamer-plugins-bad \
             gtk4-devel \
             libgraphene-devel \
             glib2-devel \

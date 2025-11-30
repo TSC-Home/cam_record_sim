@@ -21,8 +21,9 @@ pub enum DualRecorderError {
 pub type Result<T> = std::result::Result<T, DualRecorderError>;
 
 pub enum CameraSource {
-    Real(u32, u32),           // (camera_0_id, camera_1_id)
-    Virtual,                  // Two virtual test cameras
+    Single(u32),              // One real camera
+    Dual(u32, u32),           // (camera_0_id, camera_1_id)
+    Virtual,                  // Two virtual test cameras (for internal testing only)
     Mixed(u32, bool),         // (real_camera_id, is_left) + virtual
 }
 
@@ -88,7 +89,17 @@ impl DualCameraRecorder {
         right_frames: Arc<Mutex<Option<Vec<u8>>>>,
     ) -> Result<()> {
         match source {
-            CameraSource::Real(cam0_id, cam1_id) => {
+            CameraSource::Single(cam_id) => {
+                Self::record_single_camera(
+                    cam_id,
+                    output_dir,
+                    fps,
+                    duration_secs,
+                    running,
+                    left_frames,
+                )
+            }
+            CameraSource::Dual(cam0_id, cam1_id) => {
                 Self::record_real_cameras(
                     cam0_id,
                     cam1_id,
@@ -116,6 +127,50 @@ impl DualCameraRecorder {
                 ))
             }
         }
+    }
+
+    fn record_single_camera(
+        cam_id: u32,
+        output_dir: &Path,
+        fps: f64,
+        duration_secs: u64,
+        running: Arc<AtomicBool>,
+        frames: Arc<Mutex<Option<Vec<u8>>>>,
+    ) -> Result<()> {
+        println!("Starte Aufnahme von Kamera {}", cam_id);
+
+        // Öffne Kamera
+        let mut cam = CameraDevice::new(cam_id)
+            .map_err(|e| DualRecorderError::CameraError(format!("Kamera {}: {}", cam_id, e)))?;
+
+        cam.start()
+            .map_err(|e| DualRecorderError::CameraError(e.to_string()))?;
+
+        // Erstelle Recorder
+        let mut recorder = VideoRecorder::new(cam_id, 640, 480, fps, output_dir)
+            .map_err(|e| DualRecorderError::RecorderError(e.to_string()))?;
+
+        let start = std::time::Instant::now();
+        let frame_delay = Duration::from_millis((1000.0 / fps) as u64);
+
+        while running.load(Ordering::SeqCst) && start.elapsed().as_secs() < duration_secs {
+            // Lese Frame
+            if let Ok(frame) = cam.get_frame() {
+                *frames.lock().unwrap() = Some(frame.clone());
+                let _ = recorder.write_frame(&frame);
+            }
+
+            thread::sleep(frame_delay);
+        }
+
+        // Cleanup
+        let _ = cam.stop();
+        let _ = recorder.finalize();
+
+        running.store(false, Ordering::SeqCst);
+        println!("Aufnahme beendet");
+
+        Ok(())
     }
 
     fn record_real_cameras(

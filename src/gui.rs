@@ -80,18 +80,28 @@ fn create_dual_record_tab(recorder: Rc<RefCell<DualCameraRecorder>>) -> Box {
     // Left column - Camera selection
     let left_col = Box::new(Orientation::Vertical, 5);
 
-    let cam_label = Label::new(Some("<b>Kamera-Typ:</b>"));
-    cam_label.set_use_markup(true);
-    cam_label.set_xalign(0.0);
-    left_col.append(&cam_label);
+    let desc_label = Label::new(Some("<b>Echte Kamera(s) aufnehmen:</b>"));
+    desc_label.set_use_markup(true);
+    desc_label.set_xalign(0.0);
+    left_col.append(&desc_label);
 
-    let camera_type = ComboBoxText::new();
-    camera_type.append(Some("virtual"), "Virtuelle Test-Kameras");
-    camera_type.append(Some("real"), "Zwei echte Kameras");
-    camera_type.set_active(Some(0));
-    left_col.append(&camera_type);
+    let info_label = Label::new(Some("<i>Wähle, wie viele Kameras du aufnehmen möchtest</i>"));
+    info_label.set_use_markup(true);
+    info_label.set_xalign(0.0);
+    left_col.append(&info_label);
 
-    // Camera IDs (only for real cameras)
+    // Camera count selector
+    let cam_count_box = Box::new(Orientation::Horizontal, 5);
+    let cam_count_label = Label::new(Some("Anzahl Kameras:"));
+    let camera_count = ComboBoxText::new();
+    camera_count.append(Some("1"), "1 Kamera");
+    camera_count.append(Some("2"), "2 Kameras");
+    camera_count.set_active(Some(0));
+    cam_count_box.append(&cam_count_label);
+    cam_count_box.append(&camera_count);
+    left_col.append(&cam_count_box);
+
+    // Camera IDs
     let cam_ids_box = Box::new(Orientation::Horizontal, 5);
     let cam0_label = Label::new(Some("Kamera 0 ID:"));
     let cam0_spin = SpinButton::with_range(0.0, 10.0, 1.0);
@@ -100,18 +110,22 @@ fn create_dual_record_tab(recorder: Rc<RefCell<DualCameraRecorder>>) -> Box {
     let cam1_label = Label::new(Some("Kamera 1 ID:"));
     let cam1_spin = SpinButton::with_range(0.0, 10.0, 1.0);
     cam1_spin.set_value(1.0);
+    cam1_label.set_visible(false);
+    cam1_spin.set_visible(false);
 
     cam_ids_box.append(&cam0_label);
     cam_ids_box.append(&cam0_spin);
     cam_ids_box.append(&cam1_label);
     cam_ids_box.append(&cam1_spin);
-    cam_ids_box.set_sensitive(false);
 
-    // Show/hide camera IDs based on type
-    let cam_ids_box_clone = cam_ids_box.clone();
-    camera_type.connect_changed(move |combo| {
+    // Show/hide second camera ID based on count
+    let cam1_label_clone = cam1_label.clone();
+    let cam1_spin_clone = cam1_spin.clone();
+    camera_count.connect_changed(move |combo| {
         if let Some(id) = combo.active_id() {
-            cam_ids_box_clone.set_sensitive(id.as_str() == "real");
+            let show_cam1 = id.as_str() == "2";
+            cam1_label_clone.set_visible(show_cam1);
+            cam1_spin_clone.set_visible(show_cam1);
         }
     });
 
@@ -180,7 +194,7 @@ fn create_dual_record_tab(recorder: Rc<RefCell<DualCameraRecorder>>) -> Box {
 
     // Left camera preview
     let left_preview_box = Box::new(Orientation::Vertical, 5);
-    let left_label = Label::new(Some("Linke Kamera (0)"));
+    let left_label = Label::new(Some("Kamera 0"));
     let left_image = Image::new();
     left_image.set_pixel_size(320);
     left_preview_box.append(&left_label);
@@ -188,20 +202,29 @@ fn create_dual_record_tab(recorder: Rc<RefCell<DualCameraRecorder>>) -> Box {
 
     // Right camera preview
     let right_preview_box = Box::new(Orientation::Vertical, 5);
-    let right_label = Label::new(Some("Rechte Kamera (1)"));
+    let right_label = Label::new(Some("Kamera 1"));
     let right_image = Image::new();
     right_image.set_pixel_size(320);
     right_preview_box.append(&right_label);
     right_preview_box.append(&right_image);
+    right_preview_box.set_visible(false);
 
     preview_box.append(&left_preview_box);
     preview_box.append(&right_preview_box);
+
+    // Update preview visibility based on camera count
+    let right_preview_box_clone = right_preview_box.clone();
+    let camera_count_clone = camera_count.clone();
+    camera_count.connect_changed(move |combo| {
+        if let Some(id) = combo.active_id() {
+            right_preview_box_clone.set_visible(id.as_str() == "2");
+        }
+    });
 
     tab_box.append(&preview_box);
 
     // Start Button Handler
     let recorder_clone = recorder.clone();
-    let camera_type_clone = camera_type.clone();
     let cam0_spin_clone = cam0_spin.clone();
     let cam1_spin_clone = cam1_spin.clone();
     let fps_spin_clone = fps_spin.clone();
@@ -213,10 +236,11 @@ fn create_dual_record_tab(recorder: Rc<RefCell<DualCameraRecorder>>) -> Box {
     let right_image_clone = right_image.clone();
 
     start_btn.connect_clicked(move |btn| {
-        let source = if camera_type_clone.active_id().unwrap().as_str() == "virtual" {
-            CameraSource::Virtual
+        let cam_count = camera_count_clone.active_id().unwrap();
+        let source = if cam_count.as_str() == "1" {
+            CameraSource::Single(cam0_spin_clone.value() as u32)
         } else {
-            CameraSource::Real(
+            CameraSource::Dual(
                 cam0_spin_clone.value() as u32,
                 cam1_spin_clone.value() as u32,
             )
@@ -310,15 +334,23 @@ fn create_simulation_tab() -> Box {
     tab_box.set_margin_bottom(10);
 
     let desc = Label::new(Some(
-        "<b>Simulation:</b> Wähle einen Ordner mit Aufzeichnungen.\n\
-        Die erste Aufnahme wird als linke virtuelle Kamera verwendet,\n\
-        die zweite als rechte virtuelle Kamera.",
+        "<b>Virtuelle Kamera-Simulation:</b>\n\
+        Wähle einen Ordner mit Aufzeichnungen. Die Videos werden als virtuelle Kameras abgespielt:\n\
+        • Erste Datei → Linke virtuelle Kamera (Loop)\n\
+        • Zweite Datei → Rechte virtuelle Kamera (Loop)\n\n\
+        Andere Anwendungen können diese virtuellen Kameras wie echte Kameras nutzen!",
     ));
     desc.set_use_markup(true);
     desc.set_xalign(0.0);
     tab_box.append(&desc);
 
     tab_box.append(&Separator::new(Orientation::Horizontal));
+
+    // Ordner-Auswahl
+    let folder_label = Label::new(Some("<b>Aufnahmen-Ordner:</b>"));
+    folder_label.set_use_markup(true);
+    folder_label.set_xalign(0.0);
+    tab_box.append(&folder_label);
 
     let folder_box = Box::new(Orientation::Horizontal, 5);
     let folder_entry = Entry::new();
@@ -332,15 +364,86 @@ fn create_simulation_tab() -> Box {
 
     tab_box.append(&folder_box);
 
-    let status_label = Label::new(Some("<i>Nicht geladen</i>"));
-    status_label.set_use_markup(true);
-    status_label.set_xalign(0.0);
-    tab_box.append(&status_label);
+    // Status der geladenen Kameras
+    let status_box = Box::new(Orientation::Vertical, 5);
+    let left_status = Label::new(Some("<i>Linke Kamera: Nicht geladen</i>"));
+    left_status.set_use_markup(true);
+    left_status.set_xalign(0.0);
 
+    let right_status = Label::new(Some("<i>Rechte Kamera: Nicht geladen</i>"));
+    right_status.set_use_markup(true);
+    right_status.set_xalign(0.0);
+
+    status_box.append(&left_status);
+    status_box.append(&right_status);
+    tab_box.append(&status_box);
+
+    tab_box.append(&Separator::new(Orientation::Horizontal));
+
+    // Simulation Control
+    let control_label = Label::new(Some("<b>Simulation:</b>"));
+    control_label.set_use_markup(true);
+    control_label.set_xalign(0.0);
+    tab_box.append(&control_label);
+
+    let button_box = Box::new(Orientation::Horizontal, 5);
+
+    let start_sim_btn = Button::with_label("Simulation starten");
+    start_sim_btn.add_css_class("suggested-action");
+    start_sim_btn.set_sensitive(false);
+
+    let stop_sim_btn = Button::with_label("Simulation stoppen");
+    stop_sim_btn.add_css_class("destructive-action");
+    stop_sim_btn.set_sensitive(false);
+
+    let sim_status = Label::new(Some("Gestoppt"));
+    sim_status.set_margin_start(20);
+
+    button_box.append(&start_sim_btn);
+    button_box.append(&stop_sim_btn);
+    button_box.append(&sim_status);
+
+    tab_box.append(&button_box);
+
+    tab_box.append(&Separator::new(Orientation::Horizontal));
+
+    // Live Preview der virtuellen Kameras
+    let preview_label = Label::new(Some("<b>Virtuelle Kamera-Vorschau:</b>"));
+    preview_label.set_use_markup(true);
+    preview_label.set_xalign(0.0);
+    tab_box.append(&preview_label);
+
+    let preview_box = Box::new(Orientation::Horizontal, 10);
+    preview_box.set_homogeneous(true);
+
+    let left_preview_box = Box::new(Orientation::Vertical, 5);
+    let left_preview_label = Label::new(Some("Virtuelle Kamera 0 (Links)"));
+    let left_preview_image = Image::new();
+    left_preview_image.set_pixel_size(320);
+    left_preview_box.append(&left_preview_label);
+    left_preview_box.append(&left_preview_image);
+
+    let right_preview_box = Box::new(Orientation::Vertical, 5);
+    let right_preview_label = Label::new(Some("Virtuelle Kamera 1 (Rechts)"));
+    let right_preview_image = Image::new();
+    right_preview_image.set_pixel_size(320);
+    right_preview_box.append(&right_preview_label);
+    right_preview_box.append(&right_preview_image);
+
+    preview_box.append(&left_preview_box);
+    preview_box.append(&right_preview_box);
+
+    tab_box.append(&preview_box);
+
+    // Shared state
     let stereo_system: Rc<RefCell<Option<StereoPlaybackSystem>>> = Rc::new(RefCell::new(None));
+    let is_running = Rc::new(RefCell::new(false));
 
+    // Load Button Handler
     let folder_entry_clone = folder_entry.clone();
-    let status_label_clone = status_label.clone();
+    let left_status_clone = left_status.clone();
+    let right_status_clone = right_status.clone();
+    let start_sim_btn_clone = start_sim_btn.clone();
     let stereo_system_clone = stereo_system.clone();
 
     load_btn.connect_clicked(move |_| {
@@ -349,14 +452,90 @@ fn create_simulation_tab() -> Box {
         match StereoPlaybackSystem::load_from_directory(&folder_path) {
             Ok(system) => {
                 let status = system.get_status();
-                status_label_clone.set_markup(&format!("<b>Geladen:</b>\n{}", status));
+                let lines: Vec<&str> = status.lines().collect();
+
+                if lines.len() >= 2 {
+                    left_status_clone.set_markup(&format!("<b>{}</b>", lines[0]));
+                    right_status_clone.set_markup(&format!("<b>{}</b>", lines[1]));
+                }
+
                 *stereo_system_clone.borrow_mut() = Some(system);
+                start_sim_btn_clone.set_sensitive(true);
+
+                println!("Stereo-System erfolgreich geladen!");
             }
             Err(e) => {
-                status_label_clone
-                    .set_markup(&format!("<span foreground='red'>Fehler: {}</span>", e));
+                left_status_clone.set_markup("<span foreground='red'><i>Fehler beim Laden</i></span>");
+                right_status_clone.set_markup(&format!("<span foreground='red'>{}</span>", e));
+                start_sim_btn_clone.set_sensitive(false);
             }
         }
+    });
+
+    // Start Simulation Handler
+    let stereo_system_clone2 = stereo_system.clone();
+    let is_running_clone = is_running.clone();
+    let stop_sim_btn_clone = stop_sim_btn.clone();
+    let sim_status_clone = sim_status.clone();
+    let left_preview_image_clone = left_preview_image.clone();
+    let right_preview_image_clone = right_preview_image.clone();
+
+    start_sim_btn.connect_clicked(move |btn| {
+        if stereo_system_clone2.borrow().is_none() {
+            sim_status_clone.set_label("Fehler: Keine Videos geladen");
+            return;
+        }
+
+        *is_running_clone.borrow_mut() = true;
+        btn.set_sensitive(false);
+        stop_sim_btn_clone.set_sensitive(true);
+        sim_status_clone.set_label("Läuft...");
+
+        println!("Simulation gestartet!");
+
+        // Start preview update loop
+        let stereo_clone = stereo_system_clone2.clone();
+        let is_running_preview = is_running_clone.clone();
+        let left_img = left_preview_image_clone.clone();
+        let right_img = right_preview_image_clone.clone();
+
+        glib::timeout_add_local(std::time::Duration::from_millis(33), move || {
+            if !*is_running_preview.borrow() {
+                return glib::ControlFlow::Break;
+            }
+
+            if let Some(system) = stereo_clone.borrow_mut().as_mut() {
+                // Update left preview
+                if let Ok(frame) = system.get_left_frame() {
+                    if let Some(pixbuf) = frame_to_pixbuf(&frame, 640, 480) {
+                        left_img.set_from_pixbuf(Some(&pixbuf));
+                    }
+                }
+
+                // Update right preview
+                if let Ok(frame) = system.get_right_frame() {
+                    if let Some(pixbuf) = frame_to_pixbuf(&frame, 640, 480) {
+                        right_img.set_from_pixbuf(Some(&pixbuf));
+                    }
+                }
+            }
+
+            glib::ControlFlow::Continue
+        });
+    });
+
+    // Stop Simulation Handler
+    let is_running_clone2 = is_running.clone();
+    let start_sim_btn_clone2 = start_sim_btn.clone();
+    let sim_status_clone2 = sim_status.clone();
+
+    stop_sim_btn.connect_clicked(move |btn| {
+        *is_running_clone2.borrow_mut() = false;
+        btn.set_sensitive(false);
+        start_sim_btn_clone2.set_sensitive(true);
+        sim_status_clone2.set_label("Gestoppt");
+
+        println!("Simulation gestoppt");
     });
 
     tab_box
