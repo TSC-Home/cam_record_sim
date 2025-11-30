@@ -37,7 +37,6 @@ impl VirtualCamera {
         let mut count = self.frame_count.lock().unwrap();
         *count += 1;
 
-        // Generiere ein Test-Pattern (bewegende Balken)
         let frame_size = (self.width * self.height * 3) as usize;
         let mut frame = vec![0u8; frame_size];
 
@@ -48,25 +47,24 @@ impl VirtualCamera {
             for x in 0..self.width {
                 let idx = ((y * self.width + x) * 3) as usize;
 
-                // Farbiger bewegender Balken basierend auf Kamera-ID
                 let pattern = (x + offset) % (self.width / 4);
 
                 if pattern < 10 {
                     match self.id % 3 {
                         0 => {
-                            frame[idx] = 255;     // Rot
+                            frame[idx] = 255;
                             frame[idx + 1] = 0;
                             frame[idx + 2] = 0;
                         }
                         1 => {
                             frame[idx] = 0;
-                            frame[idx + 1] = 255; // Grün
+                            frame[idx + 1] = 255;
                             frame[idx + 2] = 0;
                         }
                         _ => {
                             frame[idx] = 0;
                             frame[idx + 1] = 0;
-                            frame[idx + 2] = 255; // Blau
+                            frame[idx + 2] = 255;
                         }
                     }
                 } else {

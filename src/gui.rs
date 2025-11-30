@@ -36,28 +36,22 @@ fn build_ui(app: &Application) {
     main_box.set_margin_top(10);
     main_box.set_margin_bottom(10);
 
-    // Header
     let header = Label::new(Some("<big><b>Dual-Kamera Aufnahme und Simulation</b></big>"));
     header.set_use_markup(true);
     main_box.append(&header);
 
     main_box.append(&Separator::new(Orientation::Horizontal));
 
-    // Notebook für Tabs
     let notebook = Notebook::new();
 
-    // Shared Recorder State
     let recorder = Rc::new(RefCell::new(DualCameraRecorder::new()));
 
-    // Tab 1: Dual-Kamera Aufnahme mit Live-Feed
     let record_tab = create_dual_record_tab(recorder.clone());
     notebook.append_page(&record_tab, Some(&Label::new(Some("Aufnahme"))));
 
-    // Tab 2: Simulation
     let simulation_tab = create_simulation_tab();
     notebook.append_page(&simulation_tab, Some(&Label::new(Some("Simulation"))));
 
-    // Tab 3: Wiedergabe
     let playback_tab = create_playback_tab();
     notebook.append_page(&playback_tab, Some(&Label::new(Some("Wiedergabe"))));
 
@@ -74,10 +68,8 @@ fn create_dual_record_tab(recorder: Rc<RefCell<DualCameraRecorder>>) -> Box {
     tab_box.set_margin_top(10);
     tab_box.set_margin_bottom(10);
 
-    // Settings Box
     let settings_box = Box::new(Orientation::Horizontal, 10);
 
-    // Left column - Camera selection
     let left_col = Box::new(Orientation::Vertical, 5);
 
     let desc_label = Label::new(Some("<b>Echte Kamera(s) aufnehmen:</b>"));
@@ -90,7 +82,6 @@ fn create_dual_record_tab(recorder: Rc<RefCell<DualCameraRecorder>>) -> Box {
     info_label.set_xalign(0.0);
     left_col.append(&info_label);
 
-    // Camera count selector
     let cam_count_box = Box::new(Orientation::Horizontal, 5);
     let cam_count_label = Label::new(Some("Anzahl Kameras:"));
     let camera_count = ComboBoxText::new();
@@ -101,7 +92,6 @@ fn create_dual_record_tab(recorder: Rc<RefCell<DualCameraRecorder>>) -> Box {
     cam_count_box.append(&camera_count);
     left_col.append(&cam_count_box);
 
-    // Camera IDs
     let cam_ids_box = Box::new(Orientation::Horizontal, 5);
     let cam0_label = Label::new(Some("Kamera 0 ID:"));
     let cam0_spin = SpinButton::with_range(0.0, 10.0, 1.0);
@@ -118,7 +108,6 @@ fn create_dual_record_tab(recorder: Rc<RefCell<DualCameraRecorder>>) -> Box {
     cam_ids_box.append(&cam1_label);
     cam_ids_box.append(&cam1_spin);
 
-    // Show/hide second camera ID based on count
     let cam1_label_clone = cam1_label.clone();
     let cam1_spin_clone = cam1_spin.clone();
     camera_count.connect_changed(move |combo| {
@@ -131,7 +120,6 @@ fn create_dual_record_tab(recorder: Rc<RefCell<DualCameraRecorder>>) -> Box {
 
     left_col.append(&cam_ids_box);
 
-    // FPS and Duration
     let fps_box = Box::new(Orientation::Horizontal, 5);
     let fps_label = Label::new(Some("FPS:"));
     let fps_spin = SpinButton::with_range(1.0, 60.0, 1.0);
@@ -148,7 +136,6 @@ fn create_dual_record_tab(recorder: Rc<RefCell<DualCameraRecorder>>) -> Box {
     duration_box.append(&duration_spin);
     left_col.append(&duration_box);
 
-    // Output directory
     let output_box = Box::new(Orientation::Horizontal, 5);
     let output_label = Label::new(Some("Ausgabe:"));
     let output_entry = Entry::new();
@@ -162,7 +149,6 @@ fn create_dual_record_tab(recorder: Rc<RefCell<DualCameraRecorder>>) -> Box {
 
     tab_box.append(&settings_box);
 
-    // Control Buttons
     let button_box = Box::new(Orientation::Horizontal, 5);
 
     let start_btn = Button::with_label("Aufnahme starten");
@@ -183,7 +169,6 @@ fn create_dual_record_tab(recorder: Rc<RefCell<DualCameraRecorder>>) -> Box {
 
     tab_box.append(&Separator::new(Orientation::Horizontal));
 
-    // Live Preview
     let preview_label = Label::new(Some("<b>Live-Vorschau:</b>"));
     preview_label.set_use_markup(true);
     preview_label.set_xalign(0.0);
@@ -192,7 +177,6 @@ fn create_dual_record_tab(recorder: Rc<RefCell<DualCameraRecorder>>) -> Box {
     let preview_box = Box::new(Orientation::Horizontal, 10);
     preview_box.set_homogeneous(true);
 
-    // Left camera preview
     let left_preview_box = Box::new(Orientation::Vertical, 5);
     let left_label = Label::new(Some("Kamera 0"));
     let left_image = Image::new();
@@ -200,7 +184,6 @@ fn create_dual_record_tab(recorder: Rc<RefCell<DualCameraRecorder>>) -> Box {
     left_preview_box.append(&left_label);
     left_preview_box.append(&left_image);
 
-    // Right camera preview
     let right_preview_box = Box::new(Orientation::Vertical, 5);
     let right_label = Label::new(Some("Kamera 1"));
     let right_image = Image::new();
@@ -212,7 +195,6 @@ fn create_dual_record_tab(recorder: Rc<RefCell<DualCameraRecorder>>) -> Box {
     preview_box.append(&left_preview_box);
     preview_box.append(&right_preview_box);
 
-    // Update preview visibility based on camera count
     let right_preview_box_clone = right_preview_box.clone();
     let camera_count_clone = camera_count.clone();
     camera_count.connect_changed(move |combo| {
@@ -223,7 +205,6 @@ fn create_dual_record_tab(recorder: Rc<RefCell<DualCameraRecorder>>) -> Box {
 
     tab_box.append(&preview_box);
 
-    // Start Button Handler
     let recorder_clone = recorder.clone();
     let cam0_spin_clone = cam0_spin.clone();
     let cam1_spin_clone = cam1_spin.clone();
@@ -259,7 +240,6 @@ fn create_dual_record_tab(recorder: Rc<RefCell<DualCameraRecorder>>) -> Box {
                 stop_btn_clone.set_sensitive(true);
                 status_label_clone.set_label("Aufnahme läuft...");
 
-                // Start live preview update
                 let recorder_preview = recorder_clone.clone();
                 let left_img = left_image_clone.clone();
                 let right_img = right_image_clone.clone();
@@ -271,14 +251,12 @@ fn create_dual_record_tab(recorder: Rc<RefCell<DualCameraRecorder>>) -> Box {
                         return glib::ControlFlow::Break;
                     }
 
-                    // Update left preview
                     if let Some(frame) = rec.get_left_frame() {
                         if let Some(pixbuf) = frame_to_pixbuf(&frame, 640, 480) {
                             left_img.set_from_pixbuf(Some(&pixbuf));
                         }
                     }
 
-                    // Update right preview
                     if let Some(frame) = rec.get_right_frame() {
                         if let Some(pixbuf) = frame_to_pixbuf(&frame, 640, 480) {
                             right_img.set_from_pixbuf(Some(&pixbuf));
@@ -294,7 +272,6 @@ fn create_dual_record_tab(recorder: Rc<RefCell<DualCameraRecorder>>) -> Box {
         }
     });
 
-    // Stop Button Handler
     let recorder_clone2 = recorder.clone();
     let start_btn_clone = start_btn.clone();
     let status_label_clone2 = status_label.clone();
@@ -346,7 +323,6 @@ fn create_simulation_tab() -> Box {
 
     tab_box.append(&Separator::new(Orientation::Horizontal));
 
-    // Ordner-Auswahl
     let folder_label = Label::new(Some("<b>Aufnahmen-Ordner:</b>"));
     folder_label.set_use_markup(true);
     folder_label.set_xalign(0.0);
@@ -364,7 +340,6 @@ fn create_simulation_tab() -> Box {
 
     tab_box.append(&folder_box);
 
-    // Status der geladenen Kameras
     let status_box = Box::new(Orientation::Vertical, 5);
     let left_status = Label::new(Some("<i>Linke Kamera: Nicht geladen</i>"));
     left_status.set_use_markup(true);
@@ -380,7 +355,6 @@ fn create_simulation_tab() -> Box {
 
     tab_box.append(&Separator::new(Orientation::Horizontal));
 
-    // Simulation Control
     let control_label = Label::new(Some("<b>Simulation:</b>"));
     control_label.set_use_markup(true);
     control_label.set_xalign(0.0);
@@ -407,7 +381,6 @@ fn create_simulation_tab() -> Box {
 
     tab_box.append(&Separator::new(Orientation::Horizontal));
 
-    // Live Preview der virtuellen Kameras
     let preview_label = Label::new(Some("<b>Virtuelle Kamera-Vorschau:</b>"));
     preview_label.set_use_markup(true);
     preview_label.set_xalign(0.0);
@@ -435,11 +408,9 @@ fn create_simulation_tab() -> Box {
 
     tab_box.append(&preview_box);
 
-    // Shared state
     let stereo_system: Rc<RefCell<Option<StereoPlaybackSystem>>> = Rc::new(RefCell::new(None));
     let is_running = Rc::new(RefCell::new(false));
 
-    // Load Button Handler
     let folder_entry_clone = folder_entry.clone();
     let left_status_clone = left_status.clone();
     let right_status_clone = right_status.clone();
@@ -472,7 +443,6 @@ fn create_simulation_tab() -> Box {
         }
     });
 
-    // Start Simulation Handler
     let stereo_system_clone2 = stereo_system.clone();
     let is_running_clone = is_running.clone();
     let stop_sim_btn_clone = stop_sim_btn.clone();
@@ -493,7 +463,6 @@ fn create_simulation_tab() -> Box {
 
         println!("Simulation gestartet!");
 
-        // Start preview update loop
         let stereo_clone = stereo_system_clone2.clone();
         let is_running_preview = is_running_clone.clone();
         let left_img = left_preview_image_clone.clone();
@@ -505,14 +474,12 @@ fn create_simulation_tab() -> Box {
             }
 
             if let Some(system) = stereo_clone.borrow_mut().as_mut() {
-                // Update left preview
                 if let Ok(frame) = system.get_left_frame() {
                     if let Some(pixbuf) = frame_to_pixbuf(&frame, 640, 480) {
                         left_img.set_from_pixbuf(Some(&pixbuf));
                     }
                 }
 
-                // Update right preview
                 if let Ok(frame) = system.get_right_frame() {
                     if let Some(pixbuf) = frame_to_pixbuf(&frame, 640, 480) {
                         right_img.set_from_pixbuf(Some(&pixbuf));
@@ -524,7 +491,6 @@ fn create_simulation_tab() -> Box {
         });
     });
 
-    // Stop Simulation Handler
     let is_running_clone2 = is_running.clone();
     let start_sim_btn_clone2 = start_sim_btn.clone();
     let sim_status_clone2 = sim_status.clone();

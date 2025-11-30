@@ -85,7 +85,6 @@ enum Commands {
 fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
-    // Wenn kein Kommando angegeben wurde, starte GUI
     if cli.command.is_none() {
         gui::run_gui();
         return Ok(());

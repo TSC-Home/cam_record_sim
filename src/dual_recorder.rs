@@ -154,7 +154,6 @@ impl DualCameraRecorder {
         let frame_delay = Duration::from_millis((1000.0 / fps) as u64);
 
         while running.load(Ordering::SeqCst) && start.elapsed().as_secs() < duration_secs {
-            // Lese Frame
             if let Ok(frame) = cam.get_frame() {
                 *frames.lock().unwrap() = Some(frame.clone());
                 let _ = recorder.write_frame(&frame);
@@ -163,7 +162,6 @@ impl DualCameraRecorder {
             thread::sleep(frame_delay);
         }
 
-        // Cleanup
         let _ = cam.stop();
         let _ = recorder.finalize();
 
@@ -185,7 +183,6 @@ impl DualCameraRecorder {
     ) -> Result<()> {
         println!("Starte Aufnahme von Kameras {} und {}", cam0_id, cam1_id);
 
-        // Öffne beide Kameras
         let mut cam0 = CameraDevice::new(cam0_id)
             .map_err(|e| DualRecorderError::CameraError(format!("Kamera {}: {}", cam0_id, e)))?;
         let mut cam1 = CameraDevice::new(cam1_id)
@@ -196,7 +193,6 @@ impl DualCameraRecorder {
         cam1.start()
             .map_err(|e| DualRecorderError::CameraError(e.to_string()))?;
 
-        // Erstelle Recorder
         let mut recorder0 = VideoRecorder::new(cam0_id, 640, 480, fps, output_dir)
             .map_err(|e| DualRecorderError::RecorderError(e.to_string()))?;
         let mut recorder1 = VideoRecorder::new(cam1_id, 640, 480, fps, output_dir)
@@ -206,7 +202,6 @@ impl DualCameraRecorder {
         let frame_delay = Duration::from_millis((1000.0 / fps) as u64);
 
         while running.load(Ordering::SeqCst) && start.elapsed().as_secs() < duration_secs {
-            // Lese Frames
             if let Ok(frame0) = cam0.get_frame() {
                 *left_frames.lock().unwrap() = Some(frame0.clone());
                 let _ = recorder0.write_frame(&frame0);
@@ -220,7 +215,6 @@ impl DualCameraRecorder {
             thread::sleep(frame_delay);
         }
 
-        // Cleanup
         let _ = cam0.stop();
         let _ = cam1.stop();
         let _ = recorder0.finalize();

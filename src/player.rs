@@ -31,10 +31,8 @@ impl VideoPlayer {
             )));
         }
 
-        // Initialisiere GStreamer
         gst::init().map_err(|e| PlayerError::GStreamerError(e.to_string()))?;
 
-        // Erstelle Pipeline: filesrc ! decodebin ! autovideosink
         let pipeline_str = format!(
             "filesrc location={} ! decodebin ! videoconvert ! autovideosink",
             video_path.to_str().unwrap()
@@ -52,12 +50,10 @@ impl VideoPlayer {
     }
 
     pub fn play(&mut self) -> Result<()> {
-        // Starte Pipeline
         self.pipeline
             .set_state(gst::State::Playing)
             .map_err(|e| PlayerError::PipelineError(e.to_string()))?;
 
-        // Hole Duration
         let mut retries = 10;
         while self.duration.is_none() && retries > 0 {
             if let Some(duration) = self.pipeline.query_duration::<gst::ClockTime>() {
@@ -72,7 +68,6 @@ impl VideoPlayer {
             }
         }
 
-        // Warte auf EOS oder Fehler
         let bus = self
             .pipeline
             .bus()
@@ -111,7 +106,7 @@ impl VideoPlayer {
     }
 
     pub fn get_fps(&self) -> f64 {
-        30.0 // Default, könnte aus Stream-Info gelesen werden
+        30.0
     }
 
     pub fn get_frame_count(&self) -> i32 {

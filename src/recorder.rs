@@ -56,7 +56,6 @@ impl VideoRecorder {
         fps: f64,
         output_dir: &Path,
     ) -> Result<Self> {
-        // Initialisiere GStreamer
         gst::init().map_err(|e| RecorderError::GStreamerError(e.to_string()))?;
 
         fs::create_dir_all(output_dir)?;
@@ -65,11 +64,8 @@ impl VideoRecorder {
         let filename = format!("camera_{}__{}.mp4", camera_id, timestamp);
         let output_path = output_dir.join(&filename);
 
-        // Erstelle GStreamer Pipeline
-        // appsrc ! videoconvert ! openh264enc ! mp4mux ! filesink
-        // openh264enc ist auf den meisten Systemen verfügbar
         let pipeline_str = format!(
-            "appsrc name=src ! videoconvert ! openh264enc ! mp4mux ! filesink location={}",
+            "appsrc name=src ! videoconvert ! openh264enc bitrate=2000000 ! h264parse ! video/x-h264,stream-format=avc ! mp4mux ! filesink location={}",
             output_path.to_str().unwrap()
         );
 
@@ -84,7 +80,6 @@ impl VideoRecorder {
             .downcast::<gst_app::AppSrc>()
             .map_err(|_| RecorderError::PipelineError("Kein AppSrc Element".to_string()))?;
 
-        // Konfiguriere AppSrc
         let caps = gst::Caps::builder("video/x-raw")
             .field("format", "RGB")
             .field("width", width)
@@ -95,7 +90,6 @@ impl VideoRecorder {
         appsrc.set_caps(Some(&caps));
         appsrc.set_property("format", gst::Format::Time);
 
-        // Starte Pipeline
         pipeline
             .set_state(gst::State::Playing)
             .map_err(|e| RecorderError::PipelineError(e.to_string()))?;
@@ -157,12 +151,10 @@ impl VideoRecorder {
         let duration = self.start_time.elapsed().as_secs_f64();
         let frame_count = *self.frame_count.lock().unwrap();
 
-        // Send EOS
         self.appsrc
             .end_of_stream()
             .map_err(|e| RecorderError::GStreamerError(e.to_string()))?;
 
-        // Warte auf EOS
         let bus = self
             .pipeline
             .bus()
@@ -183,7 +175,6 @@ impl VideoRecorder {
             }
         }
 
-        // Stoppe Pipeline
         self.pipeline
             .set_state(gst::State::Null)
             .map_err(|e| RecorderError::PipelineError(e.to_string()))?;

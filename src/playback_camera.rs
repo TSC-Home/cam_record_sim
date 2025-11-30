@@ -37,10 +37,8 @@ impl PlaybackCamera {
             )));
         }
 
-        // Initialisiere GStreamer
         gst::init().map_err(|e| PlaybackCameraError::GStreamerError(e.to_string()))?;
 
-        // Erstelle Pipeline: filesrc ! decodebin ! videoconvert ! appsink
         let pipeline_str = format!(
             "filesrc location={} ! decodebin ! videoconvert ! video/x-raw,format=RGB ! appsink name=sink",
             video_path.to_str().unwrap()
@@ -57,7 +55,6 @@ impl PlaybackCamera {
             .downcast::<gst_app::AppSink>()
             .map_err(|_| PlaybackCameraError::GStreamerError("Kein AppSink Element".to_string()))?;
 
-        // Starte Pipeline
         pipeline
             .set_state(gst::State::Playing)
             .map_err(|e| PlaybackCameraError::GStreamerError(e.to_string()))?;
@@ -92,7 +89,6 @@ impl PlaybackCamera {
             }
             None => {
                 if self.loop_playback {
-                    // Zurück zum Anfang
                     self.reset()?;
                     self.get_frame()
                 } else {
@@ -121,7 +117,7 @@ impl PlaybackCamera {
     }
 
     pub fn get_fps(&self) -> f64 {
-        30.0 // Default
+        30.0
     }
 
     pub fn get_frame_count(&self) -> i32 {
@@ -167,18 +163,15 @@ impl StereoPlaybackSystem {
     pub fn load_from_directory(recording_dir: &Path) -> Result<Self> {
         let mut system = Self::new();
 
-        // Suche nach Aufnahmen im Verzeichnis
         let recordings = find_recordings_in_dir(recording_dir)?;
 
         if recordings.len() >= 2 {
-            // Lade die ersten beiden Videos als linke und rechte Kamera
             system.left_camera = Some(PlaybackCamera::new(0, &recordings[0], true)?);
             system.right_camera = Some(PlaybackCamera::new(1, &recordings[1], true)?);
 
             println!("Linke Kamera: {}", recordings[0].display());
             println!("Rechte Kamera: {}", recordings[1].display());
         } else if recordings.len() == 1 {
-            // Nur ein Video gefunden, nutze es für beide Kameras
             system.left_camera = Some(PlaybackCamera::new(0, &recordings[0], true)?);
             system.right_camera = Some(PlaybackCamera::new(1, &recordings[0], true)?);
 
