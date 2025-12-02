@@ -65,8 +65,10 @@ impl VideoRecorder {
         let output_path = output_dir.join(&filename);
 
         let pipeline_str = format!(
-            "appsrc name=src ! videoconvert ! video/x-raw,format=I420 ! openh264enc bitrate=2000000 ! h264parse ! video/x-h264,stream-format=avc ! mp4mux ! filesink location={}",
-            output_path.to_str().unwrap()
+            "appsrc name=src ! videoconvert ! video/x-raw,format=I420,width={},height={} ! \
+             openh264enc bitrate=2000000 rate-control=bitrate complexity=low multi-thread=0 ! \
+             h264parse ! video/x-h264,stream-format=avc ! mp4mux ! filesink location={}",
+            width, height, output_path.to_str().unwrap()
         );
 
         let pipeline = gst::parse::launch(&pipeline_str)

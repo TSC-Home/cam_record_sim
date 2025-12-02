@@ -12,9 +12,9 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum DualRecorderError {
-    #[error("Kamera Fehler: {0}")]
+    #[error("Camera error: {0}")]
     CameraError(String),
-    #[error("Recorder Fehler: {0}")]
+    #[error("Recorder error: {0}")]
     RecorderError(String),
 }
 
@@ -51,7 +51,7 @@ impl DualCameraRecorder {
     ) -> Result<()> {
         if self.running.load(Ordering::SeqCst) {
             return Err(DualRecorderError::RecorderError(
-                "Aufnahme läuft bereits".to_string(),
+                "Recording already in progress".to_string(),
             ));
         }
 
@@ -72,7 +72,7 @@ impl DualCameraRecorder {
                 left_frames,
                 right_frames,
             ) {
-                eprintln!("Aufnahme-Fehler: {}", e);
+                eprintln!("Recording error: {}", e);
             }
         });
 

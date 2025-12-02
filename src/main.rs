@@ -1,4 +1,5 @@
 mod camera;
+mod gst_camera;
 mod player;
 mod recorder;
 mod virtual_camera;
@@ -92,15 +93,15 @@ fn main() -> anyhow::Result<()> {
 
     match cli.command.unwrap() {
         Commands::ListCameras => {
-            println!("Suche nach verfügbaren Kameras...");
+            println!("Searching for available cameras...");
             let cameras = list_cameras();
 
             if cameras.is_empty() {
-                println!("Keine Kameras gefunden!");
+                println!("No cameras found!");
             } else {
-                println!("Gefundene Kameras:");
-                for cam_id in cameras {
-                    println!("  - Kamera {}", cam_id);
+                println!("Found cameras:");
+                for cam in cameras {
+                    println!("  - {}", cam.name);
                 }
             }
         }

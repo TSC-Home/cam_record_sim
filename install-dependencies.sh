@@ -47,9 +47,16 @@ case $DISTRO in
             gtk4-devel \
             graphene-devel \
             glib2-devel \
+            gobject-introspection-devel \
             cairo-devel \
             pango-devel \
             gdk-pixbuf2-devel \
+            libusb1-devel \
+            libudev-devel \
+            libzip-devel \
+            libuuid-devel \
+            qt5-qtbase-devel \
+            ninja-build \
             git \
             cmake
 
@@ -92,9 +99,14 @@ case $DISTRO in
             libgtk-4-dev \
             libgraphene-1.0-dev \
             libglib2.0-dev \
+            gobject-introspection \
+            libgirepository1.0-dev \
             libcairo2-dev \
             libpango1.0-dev \
             libgdk-pixbuf2.0-dev \
+            libusb-1.0-0-dev \
+            libudev-dev \
+            libzip-dev \
             git \
             cmake \
             pkg-config
@@ -135,9 +147,13 @@ case $DISTRO in
             gtk4 \
             graphene \
             glib2 \
+            gobject-introspection \
             cairo \
             pango \
             gdk-pixbuf2 \
+            libusb \
+            systemd-libs \
+            libzip \
             git \
             cmake \
             pkg-config
@@ -178,9 +194,13 @@ case $DISTRO in
             gtk4-devel \
             libgraphene-devel \
             glib2-devel \
+            gobject-introspection-devel \
             cairo-devel \
             pango-devel \
             gdk-pixbuf-devel \
+            libusb-1_0-devel \
+            libudev-devel \
+            libzip-devel \
             git \
             cmake \
             pkg-config

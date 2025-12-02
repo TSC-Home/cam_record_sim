@@ -12,6 +12,7 @@ This program provides two main functions:
 ## Features
 
 - **Dual-Camera Recording**: Simultaneous recording from two cameras with live preview
+- **Industrial Camera Support**: Full support for The Imaging Source DFK 37BUX265 (USB 3.1, Sony IMX265 sensor, 3.1 MP, up to 60 fps)
 - **Video Simulation**: Play back saved videos as virtual cameras (endless loop)
 - **Live Preview**: Real-time display of both camera feeds during recording and simulation
 - **Flexible Configuration**: Adjustable FPS, resolution, duration, and output folder
@@ -37,6 +38,10 @@ This program provides two main functions:
 - Rust 2024 Edition
 - cargo
 
+**Industrial Camera Support**:
+- tiscamera (The Imaging Source camera SDK)
+- GStreamer plugins for USB 3.0/3.1 cameras
+
 ### Installing Dependencies
 
 The installation script automatically detects your Linux distribution and installs all required dependencies, including Rust if not already installed:
@@ -45,11 +50,33 @@ The installation script automatically detects your Linux distribution and instal
 ./install-dependencies.sh
 ```
 
+This will install:
+- All GStreamer libraries and plugins
+- GTK4 and dependencies
+- Rust toolchain (if not present)
+- **The Imaging Source tiscamera SDK** for DFK 37BUX265 support
+
 Supported distributions:
 - **Fedora / Red Hat / CentOS**
 - **Ubuntu / Debian**
 - **Arch Linux**
 - **openSUSE**
+
+### Supported Cameras
+
+**Standard USB Cameras**:
+- Any USB webcam or camera supported by Video4Linux (V4L2)
+- Typical consumer webcams (Logitech, etc.)
+
+**Industrial Cameras**:
+- **The Imaging Source DFK 37BUX265**
+  - USB 3.1 interface
+  - 1/1.8" Sony CMOS Pregius IMX265 sensor
+  - 2048×1536 (3.1 MP) resolution
+  - Up to 60 fps
+  - Global shutter
+  - Trigger and I/O inputs
+  - Compact: 42×42×25 mm
 
 ## Building
 
@@ -166,9 +193,18 @@ All functions are also available via command line:
 - Live preview rendering
 
 #### `camera.rs`
-- Real camera management
-- Based on nokhwa library
+- Real camera management with dual backend support
+- Nokhwa backend for standard USB cameras
+- GStreamer backend for industrial Bayer cameras (The Imaging Source)
+- Automatic backend selection based on camera capabilities
 - Frame capturing in RGB format
+
+#### `gst_camera.rs`
+- GStreamer-based camera capture for Bayer format cameras
+- Supports The Imaging Source DFK 37BUX265 and similar industrial cameras
+- Automatic Bayer-to-RGB conversion using GStreamer bayer2rgb element
+- Pipeline: v4l2src → video/x-bayer → bayer2rgb → videoconvert → RGB output
+- Configurable resolution and framerate
 
 #### `virtual_camera.rs`
 - Generates test patterns (moving color bars)
@@ -202,6 +238,23 @@ All functions are also available via command line:
 - Supports MP4, AVI, MKV
 
 ### GStreamer Pipelines
+
+#### Camera Capture Pipeline (Bayer Cameras)
+```
+v4l2src device=/dev/videoX → video/x-bayer,format=rggb → bayer2rgb → videoconvert → video/x-raw,format=RGB → appsink
+```
+
+**Parameters**:
+- Input: Raw Bayer RGGB data from The Imaging Source DFK 37BUX265
+- `v4l2src`: Direct Video4Linux2 access
+- `video/x-bayer,format=rggb`: Bayer RGGB format specification
+- `bayer2rgb`: Demosaicing (Bayer to RGB conversion)
+- `videoconvert`: Format conversion
+- `appsink`: Frame extraction for application use
+- Supports multiple resolutions:
+  - 640×480 @ 30-370 fps
+  - 1920×1080 @ 30-90 fps
+  - 2048×1536 @ 15-60 fps
 
 #### Recording Pipeline
 ```
@@ -307,6 +360,107 @@ MP4 file → PlaybackCamera → get_frame() → Live Preview (GUI)
 1. Create recordings once with hardware
 2. Continue development later without hardware
 3. Same code base, simulated inputs
+
+## Industrial Camera Setup (The Imaging Source DFK 37BUX265)
+
+### Camera Detection
+
+The application automatically detects Bayer format cameras and uses the GStreamer backend:
+
+```bash
+./cam_record_sim list-cameras
+```
+
+Expected output:
+```
+Found cameras:
+  - DFK 37BUX265 (/dev/video2)
+  - DFK 37BUX265 (/dev/video3)
+```
+
+### Checking Camera Capabilities
+
+To verify the camera's supported formats and resolutions:
+
+```bash
+v4l2-ctl --device /dev/video2 --list-formats-ext
+```
+
+Expected output for DFK 37BUX265:
+```
+[0]: 'RGGB' (8-bit Bayer RGRG/GBGB)
+    Size: Discrete 640x480
+        Interval: Discrete 0.003s (370.000 fps)
+        ...
+    Size: Discrete 1920x1080
+        Interval: Discrete 0.017s (60.000 fps)
+        ...
+    Size: Discrete 2048x1536
+        Interval: Discrete 0.017s (60.000 fps)
+        ...
+```
+
+### Testing Camera with GStreamer
+
+Test the camera directly with GStreamer:
+
+```bash
+# Test at 640x480
+gst-launch-1.0 v4l2src device=/dev/video2 ! \
+  video/x-bayer,format=rggb,width=640,height=480,framerate=30/1 ! \
+  bayer2rgb ! videoconvert ! autovideosink
+
+# Test at 1920x1080
+gst-launch-1.0 v4l2src device=/dev/video2 ! \
+  video/x-bayer,format=rggb,width=1920,height=1080,framerate=60/1 ! \
+  bayer2rgb ! videoconvert ! autovideosink
+```
+
+### Recording from DFK 37BUX265
+
+```bash
+# Record at 640x480 @ 30fps
+./cam_record_sim record --camera 2 --duration 10 --fps 30.0
+
+# The application automatically:
+# 1. Detects the Bayer format
+# 2. Uses GStreamer backend
+# 3. Converts Bayer to RGB
+# 4. Records to MP4
+```
+
+### Required GStreamer Plugins
+
+The DFK 37BUX265 requires the `bayer2rgb` element from gstreamer-plugins-bad:
+
+```bash
+# Check if bayer2rgb is available
+gst-inspect-1.0 bayer2rgb
+
+# If missing, install gstreamer-plugins-bad
+# Fedora/RHEL:
+sudo dnf install gstreamer1-plugins-bad
+
+# Ubuntu/Debian:
+sudo apt install gstreamer1.0-plugins-bad
+```
+
+### Common Issues
+
+**Camera not detected**:
+- Check USB connection (USB 3.0/3.1 port required)
+- Verify camera appears in /dev: `ls -l /dev/video*`
+- Check permissions: `sudo usermod -a -G video $USER` (logout required)
+
+**Low framerate**:
+- Ensure USB 3.0/3.1 connection (not USB 2.0)
+- Check USB bandwidth: `lsusb -v | grep -i bandwidth`
+- Reduce resolution or framerate
+
+**No video output**:
+- Verify bayer2rgb plugin: `gst-inspect-1.0 bayer2rgb`
+- Test with gst-launch-1.0 (see commands above)
+- Check GStreamer debug: `GST_DEBUG=3 ./cam_record_sim`
 
 ## Troubleshooting
 

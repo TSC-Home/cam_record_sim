@@ -4,9 +4,9 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum VirtualCameraError {
-    #[error("Virtuelle Kamera konnte nicht erstellt werden")]
+    #[error("Virtual camera could not be created")]
     CreationError,
-    #[error("Frame konnte nicht generiert werden")]
+    #[error("Frame could not be generated")]
     FrameError,
 }
 
