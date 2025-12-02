@@ -543,7 +543,7 @@ MIT
 
 ## Author
 
-FastTube Team
+Void @ FaSTTUBe
 
 ## Version
 
